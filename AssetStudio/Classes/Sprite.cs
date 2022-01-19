@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AssetStudio.Classes.Editor;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -224,6 +225,7 @@ namespace AssetStudio
         public SpriteRenderData m_RD;
         public Vector2[][] m_PhysicsShape;
         public SpriteBone[] m_Bones;
+
         public Sprite(ObjectReader reader) : base(reader)
         {
             m_Rect = new Rectf(reader);
@@ -277,7 +279,7 @@ namespace AssetStudio
             {
                 var m_BonesSize = reader.ReadInt32();
                 m_Bones = new SpriteBone[m_BonesSize];
-                for (int i = 0;i < m_BonesSize;i++)
+                for (int i = 0; i < m_BonesSize; i++)
                 {
                     m_Bones[i] = new SpriteBone(reader);
                 }

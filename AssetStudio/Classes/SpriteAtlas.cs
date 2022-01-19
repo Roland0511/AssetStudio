@@ -46,6 +46,8 @@ namespace AssetStudio
     {
         public PPtr<Sprite>[] m_PackedSprites;
         public Dictionary<KeyValuePair<Guid, long>, SpriteAtlasData> m_RenderDataMap;
+        public string[] m_PackedSpriteNamesToIndex;
+        public string m_Tag;
         public bool m_IsVariant;
 
         public SpriteAtlas(ObjectReader reader) : base(reader)
@@ -57,7 +59,7 @@ namespace AssetStudio
                 m_PackedSprites[i] = new PPtr<Sprite>(reader);
             }
 
-            var m_PackedSpriteNamesToIndex = reader.ReadStringArray();
+            m_PackedSpriteNamesToIndex = reader.ReadStringArray();
 
             var m_RenderDataMapSize = reader.ReadInt32();
             m_RenderDataMap = new Dictionary<KeyValuePair<Guid, long>, SpriteAtlasData>(m_RenderDataMapSize);
@@ -68,7 +70,7 @@ namespace AssetStudio
                 var value = new SpriteAtlasData(reader);
                 m_RenderDataMap.Add(new KeyValuePair<Guid, long>(first, second), value);
             }
-            var m_Tag = reader.ReadAlignedString();
+            m_Tag = reader.ReadAlignedString();
             m_IsVariant = reader.ReadBoolean();
             reader.AlignStream();
         }

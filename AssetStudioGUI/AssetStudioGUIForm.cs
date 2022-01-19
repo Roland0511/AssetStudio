@@ -1,4 +1,5 @@
-﻿using AssetStudio;
+using AssetStudio;
+using AssetStudio.Extensions;
 using Newtonsoft.Json;
 using OpenTK;
 using OpenTK.Graphics.OpenGL;
@@ -389,6 +390,7 @@ namespace AssetStudioGUI
                 switch (lastSelectedItem.Type)
                 {
                     case ClassIDType.Texture2D:
+                    case ClassIDType.SpriteAtlas:
                     case ClassIDType.Sprite:
                         {
                             if (enablePreview.Checked && imageTexture != null)
@@ -728,6 +730,9 @@ namespace AssetStudioGUI
                     case VideoClip _:
                     case MovieTexture _:
                         StatusStripUpdate("Only supported export.");
+                        break;
+                    case SpriteAtlas m_SpriteAtlas:
+                        PreviewSpriteAtlas(assetItem, m_SpriteAtlas);
                         break;
                     case Sprite m_Sprite:
                         PreviewSprite(assetItem, m_Sprite);
@@ -1159,6 +1164,20 @@ namespace AssetStudioGUI
             else
             {
                 StatusStripUpdate("Unable to preview this mesh");
+            }
+        }
+
+        private void PreviewSpriteAtlas(AssetItem assetItem, SpriteAtlas m_spriteAtlas)
+        {
+            if(m_spriteAtlas != null && 
+                m_spriteAtlas.m_PackedSprites.Length > 0 && 
+                m_spriteAtlas.m_PackedSprites[0].TryGet(out var m_Sprite))
+            {
+                PreviewTexture2D(assetItem, m_Sprite.GetTexture());
+            }
+            else
+            {
+                StatusStripUpdate("Unable to preview this SpriteAtlas");
             }
         }
 

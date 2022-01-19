@@ -87,6 +87,11 @@ namespace AssetStudio
             return X * X + Y * Y + Z * Z;
         }
 
+        public static float SqrMagnitude(Vector3 vector) { return vector.X * vector.X + vector.Y * vector.Y + vector.Z * vector.Z; }
+
+        public float sqrMagnitude { get { return X * X + Y * Y + Z * Z; } }
+
+
         public static Vector3 Zero => new Vector3();
 
         public static Vector3 One => new Vector3(1.0f, 1.0f, 1.0f);

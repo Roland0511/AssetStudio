@@ -1,4 +1,6 @@
 ﻿using AssetStudio;
+using AssetStudio.Extensions;
+using AssetStudio.Metas;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.IO;
@@ -233,7 +235,14 @@ namespace AssetStudioGUI
             var type = Properties.Settings.Default.convertType;
             if (!TryExportFile(exportPath, item, "." + type.ToString().ToLower(), out var exportFullPath))
                 return false;
-            var image = ((Sprite)item.Asset).GetImage();
+            var asset = item.Asset as Sprite;
+            var image = asset.GetImage();
+            var meta = asset.GetMeta();
+            if (meta != null)
+            {
+                var metaPath = exportFullPath + ".meta";
+                File.WriteAllText(metaPath, meta.ToString());
+            }
             if (image != null)
             {
                 using (image)
@@ -244,6 +253,21 @@ namespace AssetStudioGUI
                     }
                     return true;
                 }
+            }
+
+            return false;
+        }
+
+        private static bool ExportSpriteAtlas(AssetItem item, string exportPath)
+        {
+            if (!TryExportFile(exportPath, item, ".meta", out var exportFullPath))
+                return false;
+            var spriteAtlas = (SpriteAtlas)item.Asset;
+            if (spriteAtlas.m_PackedSprites[0].TryGet(out Sprite sprite))
+            {
+                var meta = new TextureMeta(sprite.GetTexture(), spriteAtlas);
+                File.WriteAllText(exportFullPath, meta.ToString());
+                return true;
             }
             return false;
         }
@@ -367,6 +391,8 @@ namespace AssetStudioGUI
                     return ExportMovieTexture(item, exportPath);
                 case ClassIDType.Sprite:
                     return ExportSprite(item, exportPath);
+                case ClassIDType.SpriteAtlas:
+                    return ExportSpriteAtlas(item, exportPath);
                 case ClassIDType.Animator:
                     return ExportAnimator(item, exportPath);
                 case ClassIDType.AnimationClip:
@@ -375,6 +401,7 @@ namespace AssetStudioGUI
                     return ExportRawFile(item, exportPath);
             }
         }
+
 
         public static string FixFileName(string str)
         {
