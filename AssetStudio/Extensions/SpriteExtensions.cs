@@ -1,5 +1,5 @@
-﻿using AssetStudio.Classes.Editor;
-using AssetStudio.Metas;
+﻿using AssetStudio.Metas;
+using AssetStudio.Metas.Components;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,51 +11,9 @@ namespace AssetStudio.Extensions
 {
     public static class SpriteExtensions
     {
-
         public static SpriteAlignment GetAlignment(this Sprite m_Sprite)
         {
-            var pX = m_Sprite.m_Pivot.X;
-            var pY = m_Sprite.m_Pivot.Y;
-            if (pX == 0.5 && pY == 0.5)
-            {
-                return SpriteAlignment.Center;
-            }
-            else if (pX == 0 && pY == 1)
-            {
-                return SpriteAlignment.TopLeft;
-            }
-            else if (pX == 0.5 && pY == 1)
-            {
-                return SpriteAlignment.TopCenter;
-            }
-            else if (pX == 1 && pY == 1)
-            {
-                return SpriteAlignment.TopRight;
-            }
-            else if (pX == 0 && pY == 0.5)
-            {
-                return SpriteAlignment.LeftCenter;
-            }
-            else if (pX == 1 && pY == 0.5)
-            {
-                return SpriteAlignment.RightCenter;
-            }
-            else if (pX == 0 && pY == 0)
-            {
-                return SpriteAlignment.BottomLeft;
-            }
-            else if (pX == 0.5 && pY == 0)
-            {
-                return SpriteAlignment.BottomCenter;
-            }
-            else if (pX == 1 && pY == 0)
-            {
-                return SpriteAlignment.BottomRight;
-            }
-            else
-            {
-                return SpriteAlignment.Custom;
-            }
+            return m_Sprite.m_Pivot.ToAlignment();
         }
 
         public static TextureMeta GetMeta(this Sprite m_Sprite)

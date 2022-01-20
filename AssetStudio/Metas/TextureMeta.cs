@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using AssetStudio.Classes.Editor;
 using AssetStudio.Extensions;
+using AssetStudio.Metas.Components;
 using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
@@ -113,9 +113,11 @@ namespace AssetStudio.Metas
             internalId = id;
             name = sprite.m_Name;
             rect = new MCRect(sprite.GetRect());
-            pivot = new Vector2 { X = sprite.m_Pivot.X, Y = sprite.m_Pivot.Y };
+            var SpPixelPivot = sprite.m_Pivot * new Vector2(sprite.m_Rect.width, sprite.m_Rect.height);
+            var TexPixelPivot = SpPixelPivot - sprite.m_RD.textureRectOffset;
+            pivot = TexPixelPivot / new Vector2(sprite.m_RD.textureRect.width, sprite.m_RD.textureRect.height);
             border = new Vector4 { X = sprite.m_Border.X, Y = sprite.m_Border.Y, Z = sprite.m_Border.Z, W = sprite.m_Border.W };
-            alignment = (int)sprite.GetAlignment();
+            alignment = (int)pivot.ToAlignment();
             bones = new MCBone[sprite.m_Bones.Length];
             for (int i = 0; i < sprite.m_Bones.Length; i++)
             {
@@ -132,6 +134,10 @@ namespace AssetStudio.Metas
             var triangles = sprite.GetTriangles();
             var pivotPixelsOffset = (sprite.m_Pivot - new Vector2(0.5f, 0.5f)) *
                 new Vector2(sprite.m_Rect.width, sprite.m_Rect.height);
+            var textureOffset = new Vector2(
+                - m_Sprite.m_RD.textureRect.x + (m_Sprite.m_Rect.width - m_Sprite.m_RD.textureRect.width)/2,
+                - m_Sprite.m_RD.textureRect.y + (m_Sprite.m_Rect.height - m_Sprite.m_RD.textureRect.height)/2
+                );
             outline = new Vector2[triangles.Length][];
             for (int i = 0;i < triangles.Length;i++)
             {
@@ -139,7 +145,7 @@ namespace AssetStudio.Metas
                 outline[i] = new Vector2[3];
                 for (int j = 0; j < triangle.Length;j++)
                 {
-                    outline[i][j] = triangle[j] * sprite.m_PixelsToUnits + pivotPixelsOffset;
+                    outline[i][j] = triangle[j] * sprite.m_PixelsToUnits + pivotPixelsOffset + textureOffset; 
                 }
             }
 
@@ -150,7 +156,7 @@ namespace AssetStudio.Metas
                 physicsShape[i] = new Vector2[shape[i].Length];
                 for (int j = 0;j < shape[i].Length;j++)
                 {
-                    physicsShape[i][j] = shape[i][j] * sprite.m_PixelsToUnits + pivotPixelsOffset;
+                    physicsShape[i][j] = shape[i][j] * sprite.m_PixelsToUnits + pivotPixelsOffset + textureOffset;
                 }
             }
         }
@@ -185,17 +191,18 @@ namespace AssetStudio.Metas
         public MCBone[] bones;
         public Vector2[][] outline;
         public Vector2[][] physicsShape;
-
         public string spriteID;
+
+        private MCSprite m_MCSprite;
         public MCSpriteSheet(Sprite sprite)
         {
             serializedVersion = 2;
             spriteID = Guid.NewGuid().ToString("N");
             sprites = Array.Empty<MCSprite>();
-            var mcSprite = new MCSprite(sprite, 0);
-            bones = mcSprite.bones;
-            outline = mcSprite.outline;
-            physicsShape = mcSprite.physicsShape;
+            m_MCSprite = new MCSprite(sprite, 0);
+            bones = m_MCSprite.bones;
+            outline = m_MCSprite.outline;
+            physicsShape = m_MCSprite.physicsShape;
         }
 
         public MCSpriteSheet(Sprite[] sprites, Dictionary<string, uint> internalIDDict)
@@ -223,6 +230,24 @@ namespace AssetStudio.Metas
 
             }
         }
+
+        public Vector2 GetSpritePivot()
+        {
+            if (m_MCSprite != null)
+            {
+                return m_MCSprite.pivot;
+            }
+            if (sprites.Length > 0)
+            {
+                return sprites[0].pivot;
+            }
+            return Vector2.Zero;
+        }
+
+        public SpriteAlignment GetAlignment()
+        {
+            return GetSpritePivot().ToAlignment();
+        }
     }
 
     public struct MCInternalIDNamePair
@@ -236,79 +261,16 @@ namespace AssetStudio.Metas
         }
     }
 
-
-    public class MCTextureImporter : MetaComponent
-    {
-        public List<MCInternalIDNamePair> internalIDToNameTable;
-        public MCSpriteSheet spriteSheet;
-        public float spritePixelsToUnits;
-        public Vector2 spritePivot;
-        public Vector4 spriteBorder;
-        public int alignment;
-        public int textureType;
-        public int spriteMode;
-        public int alphaIsTransparency;
-        public int nPOTScale;
-        public MCTextureImporter(Sprite sprite)
-        {
-            serializedVersion = 11;
-            textureType = (int)TextureImporterType.Sprite;
-            spriteMode = (int)SpriteImportMode.Single;
-            alphaIsTransparency = 1;
-            alignment = (int)sprite.GetAlignment();
-            nPOTScale = (int)TextureImporterNPOTScale.None;
-            spritePixelsToUnits = sprite.m_PixelsToUnits;
-            spritePivot = sprite.m_Pivot;
-            spriteBorder = sprite.m_Border;
-            spriteSheet = new MCSpriteSheet(sprite);
-            internalIDToNameTable = new List<MCInternalIDNamePair>();
-        }
-
-        public MCTextureImporter(Texture2D texture, SpriteAtlas spriteAtlas)
-        {
-            serializedVersion = 11;
-            textureType = (int)TextureImporterType.Sprite;
-            spriteMode = (int)SpriteImportMode.Multiple;
-            alphaIsTransparency = 1;
-
-            var matchedSprites = new List<PPtr<Sprite>>();
-            var sprites = spriteAtlas.m_PackedSprites;
-            internalIDToNameTable = new List<MCInternalIDNamePair>();
-            var internalIDDict = new Dictionary<string, uint>();
-            for (int i = 0; i < sprites.Length; i++)
-            {
-                if (sprites[i].TryGet(out Sprite sprite))
-                {
-                    var spTexture2D = sprite.GetTexture();
-                    if (spTexture2D != null && spTexture2D.m_Name == texture.m_Name)
-                    {
-                        if(spritePixelsToUnits == 0)spritePixelsToUnits = sprite.m_PixelsToUnits;
-                        matchedSprites.Add(sprites[i]);
-                        var classId = (int)ClassIDType.Sprite;
-                        var internalId = (int)ClassIDType.Sprite * 100000 + i * 2;
-                        var internalKey = new Dictionary<int, uint>
-                        {
-                            [classId] = (uint)internalId
-                        };
-                        internalIDToNameTable.Add(new MCInternalIDNamePair(internalKey, sprite.m_Name));
-                        internalIDDict[sprite.m_Name] = (uint)internalId;
-                    }
-                }
-            }
-            alignment = 0;
-            spriteSheet = new MCSpriteSheet(matchedSprites.ToArray(), internalIDDict);
-        }
-    }
     public class TextureMeta : MetaObject
     {
-        public MCTextureImporter TextureImporter;
+        public TextureImporter TextureImporter;
         public TextureMeta(Sprite sprite)
         {
-            TextureImporter = new MCTextureImporter(sprite);
+            TextureImporter = new TextureImporter(sprite);
         }
         public TextureMeta(Texture2D texture, SpriteAtlas spriteAtlas)
         {
-            TextureImporter = new MCTextureImporter(texture, spriteAtlas);
+            TextureImporter = new TextureImporter(texture, spriteAtlas);
         }
 
         protected override SerializerBuilder CreateSerializerBuilder()

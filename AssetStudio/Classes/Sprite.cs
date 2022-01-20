@@ -1,5 +1,4 @@
-﻿using AssetStudio.Classes.Editor;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AssetStudio.Metas
+namespace AssetStudio.Metas.Components
 {
     public class MetaComponent
     {

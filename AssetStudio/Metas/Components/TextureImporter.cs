@@ -1,14 +1,77 @@
-﻿using System;
+﻿using AssetStudio.Extensions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AssetStudio.Classes.Editor
+namespace AssetStudio.Metas.Components
 {
-    public class TextureImporter
+
+    public class TextureImporter : MetaComponent
     {
+        public List<MCInternalIDNamePair> internalIDToNameTable;
+        public MCSpriteSheet spriteSheet;
+        public float spritePixelsToUnits;
+        public Vector2 spritePivot;
+        public Vector4 spriteBorder;
+        public int alignment;
+        public int textureType;
+        public int spriteMode;
+        public int alphaIsTransparency;
+        public int nPOTScale;
+        public TextureImporter(Sprite sprite)
+        {
+            serializedVersion = 11;
+            textureType = (int)TextureImporterType.Sprite;
+            spriteMode = (int)SpriteImportMode.Single;
+            alphaIsTransparency = 1;
+            nPOTScale = (int)TextureImporterNPOTScale.None;
+            spritePixelsToUnits = sprite.m_PixelsToUnits;
+            spriteSheet = new MCSpriteSheet(sprite);
+            spriteBorder = sprite.m_Border;
+            spritePivot = spriteSheet.GetSpritePivot();
+            alignment = (int)spriteSheet.GetAlignment();
+            internalIDToNameTable = new List<MCInternalIDNamePair>();
+        }
+
+        public TextureImporter(Texture2D texture, SpriteAtlas spriteAtlas)
+        {
+            serializedVersion = 11;
+            textureType = (int)TextureImporterType.Sprite;
+            spriteMode = (int)SpriteImportMode.Multiple;
+            alphaIsTransparency = 1;
+
+            var matchedSprites = new List<PPtr<Sprite>>();
+            var sprites = spriteAtlas.m_PackedSprites;
+            internalIDToNameTable = new List<MCInternalIDNamePair>();
+            var internalIDDict = new Dictionary<string, uint>();
+            for (int i = 0; i < sprites.Length; i++)
+            {
+                if (sprites[i].TryGet(out Sprite sprite))
+                {
+                    var spTexture2D = sprite.GetTexture();
+                    if (spTexture2D != null && spTexture2D.m_Name == texture.m_Name)
+                    {
+                        if (spritePixelsToUnits == 0) spritePixelsToUnits = sprite.m_PixelsToUnits;
+                        matchedSprites.Add(sprites[i]);
+                        var classId = (int)ClassIDType.Sprite;
+                        var internalId = (int)ClassIDType.Sprite * 100000 + i * 2;
+                        var internalKey = new Dictionary<int, uint>
+                        {
+                            [classId] = (uint)internalId
+                        };
+                        internalIDToNameTable.Add(new MCInternalIDNamePair(internalKey, sprite.m_Name));
+                        internalIDDict[sprite.m_Name] = (uint)internalId;
+                    }
+                }
+            }
+            alignment = 0;
+            spriteSheet = new MCSpriteSheet(matchedSprites.ToArray(), internalIDDict);
+        }
     }
+
+
     public enum TextureImporterType
     {
         /// <summary>
