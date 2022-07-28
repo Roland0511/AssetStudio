@@ -108,7 +108,7 @@ namespace AssetStudioGUI
 
             logger = new GUILogger(StatusStripUpdate);
             Logger.Default = logger;
-            Progress.Default = new GUIProgress(SetProgressBarValue);
+            Progress.Default = new Progress<int>(SetProgressBarValue);
             Studio.StatusStripUpdate = StatusStripUpdate;
         }
 
@@ -142,7 +142,7 @@ namespace AssetStudioGUI
         private async void loadFile_Click(object sender, EventArgs e)
         {
             openFileDialog1.InitialDirectory = openDirectoryBackup;
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            if (openFileDialog1.ShowDialog(this) == DialogResult.OK)
             {
                 ResetForm();
                 openDirectoryBackup = Path.GetDirectoryName(openFileDialog1.FileNames[0]);
@@ -168,7 +168,7 @@ namespace AssetStudioGUI
 
         private async void extractFileToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            if (openFileDialog1.ShowDialog(this) == DialogResult.OK)
             {
                 var saveFolderDialog = new OpenFolderDialog();
                 saveFolderDialog.Title = "Select the save folder";
@@ -223,10 +223,6 @@ namespace AssetStudioGUI
 
             sceneTreeView.BeginUpdate();
             sceneTreeView.Nodes.AddRange(treeNodeCollection.ToArray());
-            foreach (var node in treeNodeCollection)
-            {
-                node.HideCheckBox();
-            }
             sceneTreeView.EndUpdate();
             treeNodeCollection.Clear();
 
@@ -463,7 +459,7 @@ namespace AssetStudioGUI
         private void showExpOpt_Click(object sender, EventArgs e)
         {
             var exportOpt = new ExportOptions();
-            exportOpt.ShowDialog();
+            exportOpt.ShowDialog(this);
         }
 
         private void assetListView_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e)
@@ -764,7 +760,7 @@ namespace AssetStudioGUI
             var image = m_Texture2D.ConvertToImage(true);
             if (image != null)
             {
-                var bitmap = new DirectBitmap(image.ConvertToBgra32Bytes(), m_Texture2D.m_Width, m_Texture2D.m_Height);
+                var bitmap = new DirectBitmap(image.ConvertToBytes(), m_Texture2D.m_Width, m_Texture2D.m_Height);
                 image.Dispose();
                 assetItem.InfoText = $"Width: {m_Texture2D.m_Width}\nHeight: {m_Texture2D.m_Height}\nFormat: {m_Texture2D.m_TextureFormat}";
                 switch (m_Texture2D.m_TextureSettings.m_FilterMode)
@@ -825,40 +821,40 @@ namespace AssetStudioGUI
             {
                 switch (m_AudioClip.m_Type)
                 {
-                    case AudioType.ACC:
+                    case FMODSoundType.ACC:
                         assetItem.InfoText += "Acc";
                         break;
-                    case AudioType.AIFF:
+                    case FMODSoundType.AIFF:
                         assetItem.InfoText += "AIFF";
                         break;
-                    case AudioType.IT:
+                    case FMODSoundType.IT:
                         assetItem.InfoText += "Impulse tracker";
                         break;
-                    case AudioType.MOD:
+                    case FMODSoundType.MOD:
                         assetItem.InfoText += "Protracker / Fasttracker MOD";
                         break;
-                    case AudioType.MPEG:
+                    case FMODSoundType.MPEG:
                         assetItem.InfoText += "MP2/MP3 MPEG";
                         break;
-                    case AudioType.OGGVORBIS:
+                    case FMODSoundType.OGGVORBIS:
                         assetItem.InfoText += "Ogg vorbis";
                         break;
-                    case AudioType.S3M:
+                    case FMODSoundType.S3M:
                         assetItem.InfoText += "ScreamTracker 3";
                         break;
-                    case AudioType.WAV:
+                    case FMODSoundType.WAV:
                         assetItem.InfoText += "Microsoft WAV";
                         break;
-                    case AudioType.XM:
+                    case FMODSoundType.XM:
                         assetItem.InfoText += "FastTracker 2 XM";
                         break;
-                    case AudioType.XMA:
+                    case FMODSoundType.XMA:
                         assetItem.InfoText += "Xbox360 XMA";
                         break;
-                    case AudioType.VAG:
+                    case FMODSoundType.VAG:
                         assetItem.InfoText += "PlayStation Portable ADPCM";
                         break;
-                    case AudioType.AUDIOQUEUE:
+                    case FMODSoundType.AUDIOQUEUE:
                         assetItem.InfoText += "iPhone";
                         break;
                     default:
@@ -882,7 +878,7 @@ namespace AssetStudioGUI
                     case AudioCompressionFormat.MP3:
                         assetItem.InfoText += "MP3";
                         break;
-                    case AudioCompressionFormat.VAG:
+                    case AudioCompressionFormat.PSMVAG:
                         assetItem.InfoText += "PlayStation Portable ADPCM";
                         break;
                     case AudioCompressionFormat.HEVAG:
@@ -1186,7 +1182,7 @@ namespace AssetStudioGUI
             var image = m_Sprite.GetImage();
             if (image != null)
             {
-                var bitmap = new DirectBitmap(image.ConvertToBgra32Bytes(), image.Width, image.Height);
+                var bitmap = new DirectBitmap(image.ConvertToBytes(), image.Width, image.Height);
                 image.Dispose();
                 assetItem.InfoText = $"Width: {bitmap.Width}\nHeight: {bitmap.Height}\n";
                 PreviewTexture(bitmap);
@@ -1403,25 +1399,32 @@ namespace AssetStudioGUI
             {
                 var gameObjects = new List<GameObject>();
                 GetSelectedParentNode(sceneTreeView.Nodes, gameObjects);
-                var saveFileDialog = new SaveFileDialog();
-                saveFileDialog.FileName = gameObjects[0].m_Name + " (merge).fbx";
-                saveFileDialog.AddExtension = false;
-                saveFileDialog.Filter = "Fbx file (*.fbx)|*.fbx";
-                saveFileDialog.InitialDirectory = saveDirectoryBackup;
-                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                if (gameObjects.Count > 0)
                 {
-                    saveDirectoryBackup = Path.GetDirectoryName(saveFileDialog.FileName);
-                    var exportPath = saveFileDialog.FileName;
-                    List<AssetItem> animationList = null;
-                    if (animation)
+                    var saveFileDialog = new SaveFileDialog();
+                    saveFileDialog.FileName = gameObjects[0].m_Name + " (merge).fbx";
+                    saveFileDialog.AddExtension = false;
+                    saveFileDialog.Filter = "Fbx file (*.fbx)|*.fbx";
+                    saveFileDialog.InitialDirectory = saveDirectoryBackup;
+                    if (saveFileDialog.ShowDialog(this) == DialogResult.OK)
                     {
-                        animationList = GetSelectedAssets().Where(x => x.Type == ClassIDType.AnimationClip).ToList();
-                        if (animationList.Count == 0)
+                        saveDirectoryBackup = Path.GetDirectoryName(saveFileDialog.FileName);
+                        var exportPath = saveFileDialog.FileName;
+                        List<AssetItem> animationList = null;
+                        if (animation)
                         {
-                            animationList = null;
+                            animationList = GetSelectedAssets().Where(x => x.Type == ClassIDType.AnimationClip).ToList();
+                            if (animationList.Count == 0)
+                            {
+                                animationList = null;
+                            }
                         }
+                        ExportObjectsMergeWithAnimationClip(exportPath, gameObjects, animationList);
                     }
-                    ExportObjectsMergeWithAnimationClip(exportPath, gameObjects, animationList);
+                }
+                else
+                {
+                    StatusStripUpdate("No Object selected for export.");
                 }
             }
         }
